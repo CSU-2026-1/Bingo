@@ -133,25 +133,34 @@ input {
 }
 
 .side-brand {
-  display: grid;
+  display: flex;
+  align-items: center;
   min-width: 220px;
-  gap: 8px;
 }
 
 .side-brand span {
-  color: var(--acid);
-  font-size: 14px;
-  font-weight: 900;
+  position: relative;
+  color: #f8fffb;
+  font-size: 34px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0;
   text-transform: uppercase;
-  text-shadow: 0 0 8px rgba(0, 191, 165, 0.36);
+  text-shadow:
+    0 0 4px rgba(248, 255, 251, 0.42),
+    0 0 10px rgba(0, 191, 165, 0.54),
+    0 0 18px rgba(255, 79, 143, 0.22);
 }
 
-.side-brand strong {
-  min-width: 0;
-  color: var(--text);
-  font-size: 24px;
-  line-height: 1.1;
-  overflow-wrap: anywhere;
+.side-brand span::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--acid), var(--red), transparent);
+  box-shadow: 0 0 10px rgba(0, 191, 165, 0.44);
 }
 
 .side-nav {
@@ -608,6 +617,15 @@ input {
   gap: 0;
   margin: 24px 0 0;
   border-top: 1px solid var(--line);
+}
+
+.profile-card > .auth-button,
+.profile-edit-form {
+  margin-top: 18px;
+}
+
+.profile-edit-form .auth-button + .auth-button {
+  margin-top: 12px;
 }
 
 .profile-row {
@@ -1257,8 +1275,8 @@ input {
     flex: 1;
   }
 
-  .side-brand strong {
-    font-size: 18px;
+  .side-brand span {
+    font-size: 28px;
   }
 
   .side-nav {

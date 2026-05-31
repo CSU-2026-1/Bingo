@@ -1,9 +1,11 @@
 from decimal import Decimal
 
 from fastapi import HTTPException, status
+import httpx
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.user import User
 from app.schemas.user import UserCreateFromAuthEvent, UserUpdateRequest
 
@@ -60,6 +62,39 @@ async def create_user_from_auth_event(
     return user
 
 
+async def sync_auth_user_identity(
+    auth_user_id: int,
+    payload: UserUpdateRequest,
+) -> None:
+    body = payload.model_dump(exclude_none=True)
+
+    if not body:
+        return
+
+    try:
+        async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as client:
+            response = await client.patch(
+                f"{settings.auth_service_url}/auth/internal/users/{auth_user_id}",
+                json=body,
+                headers={"X-Internal-Service-Token": settings.internal_service_token},
+            )
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Не удалось синхронизировать профиль с auth-service.",
+        ) from exc
+
+    if response.status_code == status.HTTP_409_CONFLICT:
+        detail = response.json().get("detail", "Email или username уже занят.")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+
+    if not response.is_success:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Auth-service не обновил данные профиля.",
+        )
+
+
 async def update_user_profile(
     session: AsyncSession,
     auth_user_id: int,
@@ -83,6 +118,8 @@ async def update_user_profile(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Профиль с таким email или username уже существует.",
             )
+
+    await sync_auth_user_identity(auth_user_id, payload)
 
     if payload.username is not None:
         user.username = payload.username

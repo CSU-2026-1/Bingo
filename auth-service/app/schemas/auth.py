@@ -15,6 +15,11 @@ class UserLoginRequest(BaseModel):
     password: str = Field(min_length=6, max_length=128)
 
 
+class InternalUserUpdateRequest(BaseModel):
+    username: str | None = Field(default=None, min_length=3, max_length=50)
+    email: EmailStr | None = None
+
+
 class UserResponse(BaseModel):
     id: int
     username: str

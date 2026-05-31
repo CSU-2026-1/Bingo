@@ -10,7 +10,6 @@
     <aside class="app-sidebar" aria-label="BINGO navigation">
       <div class="side-brand">
         <span>BINGO</span>
-        <strong id="navUserName">Player</strong>
       </div>
       <nav class="side-nav">
         <a class="side-nav-link" href="./home.html">Главная</a>
@@ -52,12 +51,49 @@
             </div>
           </dl>
 
+          <button class="auth-button" id="profileEditButton" type="button">
+            <span>Редактировать</span>
+          </button>
+
+          <form class="profile-edit-form is-hidden" id="profileEditForm">
+            <label class="field">
+              <span>Username</span>
+              <input
+                type="text"
+                name="username"
+                autocomplete="username"
+                placeholder="Ваш username"
+                minlength="3"
+                maxlength="50"
+                required
+              />
+            </label>
+
+            <label class="field">
+              <span>Email</span>
+              <input
+                type="email"
+                name="email"
+                autocomplete="email"
+                placeholder="player@example.com"
+                required
+              />
+            </label>
+
+            <button class="auth-button" type="submit">
+              <span>Сохранить</span>
+            </button>
+            <button class="auth-button home-button-secondary" id="profileCancelButton" type="button">
+              <span>Отмена</span>
+            </button>
+          </form>
+
         </article>
       </section>
     </main>
 
     <script src="../js/api.js?v=ui-1"></script>
     <script src="../js/nav.js?v=ui-1"></script>
-    <script src="../js/user.js?v=ui-1"></script>
+    <script src="../js/user.js?v=ui-2"></script>
   </body>
 </html>

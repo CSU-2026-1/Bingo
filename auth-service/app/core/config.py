@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     user_registered_routing_key: str
     user_registered_queue: str
     cors_origins: str
+    internal_service_token: str
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

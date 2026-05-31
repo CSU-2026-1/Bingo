@@ -14,7 +14,6 @@ const roomIdValue = document.querySelector("#roomIdValue");
 const roomLinkValue = document.querySelector("#roomLinkValue");
 const roomHostValue = document.querySelector("#roomHostValue");
 const playerList = document.querySelector("#playerList");
-const openGameLink = document.querySelector("#openGameLink");
 const patternOptions = document.querySelector("#patternOptions");
 const patternModal = document.querySelector("#patternModal");
 const openPatternModalButton = document.querySelector("#openPatternModalButton");
@@ -220,6 +219,11 @@ function gameUrl(roomId) {
   return `${GAME_PAGE_URL}?game_id=${encodeURIComponent(roomId)}`;
 }
 
+function goToGame(roomId) {
+  localStorage.setItem("bingo_game_id", String(roomId));
+  window.location.href = gameUrl(roomId);
+}
+
 function lobbyRoomUrl(roomId) {
   return `${window.location.origin}${window.location.pathname}?room_id=${encodeURIComponent(roomId)}`;
 }
@@ -245,8 +249,6 @@ function renderEmptyRoom() {
   roomBrowser.classList.remove("is-hidden");
   currentRoomView.classList.add("is-hidden");
   startRoomButton.disabled = true;
-  openGameLink.href = GAME_PAGE_URL;
-  openGameLink.setAttribute("aria-disabled", "true");
   closeRoomButton.classList.add("is-hidden");
   closeRoomButton.disabled = true;
   renderSelectedPattern();
@@ -292,8 +294,6 @@ function renderRoom(room) {
   startRoomButton.disabled = busy || room.status !== "waiting" || !isHost();
   closeRoomButton.classList.toggle("is-hidden", !isHost() || room.status !== "waiting");
   closeRoomButton.disabled = busy || !isHost() || room.status !== "waiting";
-  openGameLink.href = gameUrl(room.id);
-  openGameLink.setAttribute("aria-disabled", "false");
   renderPatternOptions();
   renderSelectedPattern();
   startRoomPolling();
@@ -463,7 +463,13 @@ async function checkCurrentRoom() {
   }
 
   try {
-    syncRoom(await loadRoom(currentRoom.id));
+    const room = await loadRoom(currentRoom.id);
+    if (room.status === "active") {
+      goToGame(room.id);
+      return;
+    }
+
+    syncRoom(room);
   } catch (error) {
     if (String(error.message).includes("Room not found")) {
       renderEmptyRoom();
@@ -502,8 +508,8 @@ startRoomButton.addEventListener("click", () => withLobbyAction(async () => {
   }
 
   setLobbyMessage("Запускаем игру...");
-  syncRoom(await startRoom(currentRoom.id));
-  setLobbyMessage("Игра запущена. Теперь можно открыть карточку.");
+  const room = await startRoom(currentRoom.id);
+  goToGame(room.id);
 }));
 
 closeRoomButton.addEventListener("click", () => withLobbyAction(async () => {
@@ -536,6 +542,13 @@ if (isNumericId(linkedRoomId)) {
       syncRoom(await joinRoom(linkedRoomId));
       setLobbyMessage("Вы вошли в комнату по ссылке.");
     } else {
+      if (room.status === "active") {
+        renderEmptyRoom();
+        await refreshRooms();
+        setLobbyMessage("Игра уже началась. Войти в эту комнату нельзя.", "is-error");
+        return;
+      }
+
       syncRoom(room);
       setLobbyMessage("Открыта комната по ссылке.");
     }

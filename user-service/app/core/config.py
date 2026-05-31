@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     user_registered_routing_key: str
     user_registered_queue: str
     cors_origins: str
+    auth_service_url: str
+    internal_service_token: str
+    http_timeout_seconds: float = 5
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

@@ -7,7 +7,6 @@ const LOGIN_PAGE_URL = "./login.html";
 
 const gameIdValue = document.querySelector("#gameIdValue");
 const cardActionButton = document.querySelector("#cardActionButton");
-const drawBallButton = document.querySelector("#drawBallButton");
 const claimBingoButton = document.querySelector("#claimBingoButton");
 const gameStatusValue = document.querySelector("#gameStatusValue");
 const lastBallValue = document.querySelector("#lastBallValue");
@@ -27,6 +26,11 @@ let lastBallNumber = null;
 let currentDrawnNumbers = new Set();
 let busy = false;
 let autoRefreshTimer = null;
+let countdownTimer = null;
+let autoDrawTimer = null;
+let countdownActive = false;
+let ballFlowStarted = false;
+let autoDrawBusy = false;
 let claimPollTimer = null;
 let claimPending = false;
 let currentWinner = null;
@@ -253,6 +257,28 @@ function isRoomFinished() {
   return currentRoom?.status === "finished";
 }
 
+function stopCountdown() {
+  if (countdownTimer) {
+    window.clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+  countdownActive = false;
+}
+
+function stopAutoDraw() {
+  if (autoDrawTimer) {
+    window.clearInterval(autoDrawTimer);
+    autoDrawTimer = null;
+  }
+  autoDrawBusy = false;
+}
+
+function stopBallFlow() {
+  stopCountdown();
+  stopAutoDraw();
+  ballFlowStarted = false;
+}
+
 function renderWinner(winner) {
   currentWinner = winner;
 
@@ -275,10 +301,10 @@ function renderRoomState(room) {
   }
 
   if (isRoomFinished()) {
+    stopBallFlow();
     gameStatusValue.textContent = "Завершена";
     gameStatusValue.classList.remove("is-active");
     gameStatusValue.classList.add("is-finished");
-    drawBallButton.disabled = true;
     claimBingoButton.disabled = true;
     return;
   }
@@ -339,7 +365,7 @@ function isHost() {
 }
 
 function renderHostControls() {
-  drawBallButton.classList.toggle("is-hidden", !isHost());
+  return;
 }
 
 function lineProgress(cells) {
@@ -455,17 +481,23 @@ function renderGameState(state) {
     gameStatusValue.classList.toggle("is-active", Boolean(state.is_active));
     gameStatusValue.classList.remove("is-finished");
   }
+
+  if (countdownActive) {
+    claimBingoButton.disabled = true;
+    updateCardAvailability();
+    return;
+  }
+
   lastBallValue.textContent = state.last_ball?.number || "...";
   drawnCountValue.textContent = `${state.drawn_count || 0} из 75`;
-  drawBallButton.disabled = busy || !state.is_active || !isHost() || isRoomFinished();
   claimBingoButton.disabled = busy || claimPending || !currentCard || isRoomFinished();
   updateCardAvailability();
+  startBallFlow(state);
 }
 
 function setBusy(isBusy) {
   busy = isBusy;
   cardActionButton.disabled = isBusy;
-  drawBallButton.disabled = isBusy || !isHost() || isRoomFinished();
   claimBingoButton.disabled = isBusy || claimPending || !currentCard || isRoomFinished();
   updateCardAvailability();
 }
@@ -528,6 +560,80 @@ async function refreshRoomState() {
   return room;
 }
 
+async function autoDrawNextBall() {
+  if (!isHost() || isRoomFinished() || autoDrawBusy) {
+    return;
+  }
+
+  autoDrawBusy = true;
+  try {
+    const ball = await drawBall();
+    await refreshRoomState().catch(() => {});
+    await refreshGameState();
+    setGameMessage(`Выпал шар ${ball.number}.`);
+  } catch (error) {
+    stopAutoDraw();
+    if (!String(error.message).includes("Only active room")) {
+      setGameMessage(error.message, "is-error");
+    }
+  } finally {
+    autoDrawBusy = false;
+  }
+}
+
+function startAutoDraw() {
+  if (!isHost() || autoDrawTimer || isRoomFinished()) {
+    return;
+  }
+
+  autoDrawNextBall();
+  autoDrawTimer = window.setInterval(autoDrawNextBall, 4000);
+}
+
+function startCountdownThenDraw() {
+  if (countdownTimer || countdownActive || isRoomFinished()) {
+    return;
+  }
+
+  let secondsLeft = 5;
+  countdownActive = true;
+  gameStatusValue.textContent = "Старт";
+  gameStatusValue.classList.add("is-active");
+  lastBallValue.textContent = secondsLeft;
+  drawnCountValue.textContent = "До первого шара";
+  claimBingoButton.disabled = true;
+
+  countdownTimer = window.setInterval(() => {
+    secondsLeft -= 1;
+
+    if (secondsLeft > 0) {
+      lastBallValue.textContent = secondsLeft;
+      return;
+    }
+
+    stopCountdown();
+    lastBallValue.textContent = "...";
+    drawnCountValue.textContent = "0 из 75";
+    setGameMessage(isHost() ? "Автоматически достаем шары каждые 4 секунды." : "Шары появляются автоматически.");
+    startAutoDraw();
+  }, 1000);
+}
+
+function startBallFlow(state) {
+  if (ballFlowStarted || isRoomFinished() || !state.is_active) {
+    return;
+  }
+
+  ballFlowStarted = true;
+
+  if ((state.drawn_count || 0) > 0) {
+    startAutoDraw();
+    return;
+  }
+
+  startCountdownThenDraw();
+}
+
 function startAutoRefresh() {
   if (autoRefreshTimer || !currentGameId) {
     return;
@@ -545,17 +651,6 @@ function startAutoRefresh() {
 cardActionButton.addEventListener("click", () => run(async () => {
   await openOrCreateCard();
   await refreshGameState().catch(() => {});
-}));
-
-drawBallButton.addEventListener("click", () => run(async () => {
-  if (!isHost()) {
-    throw new Error("Шары достает только хост комнаты.");
-  }
-
-  const ball = await drawBall();
-  await refreshRoomState().catch(() => {});
-  await refreshGameState();
-  setGameMessage(`Достали шар ${ball.number}.`);
 }));
 
 claimBingoButton.addEventListener("click", () => run(async () => {

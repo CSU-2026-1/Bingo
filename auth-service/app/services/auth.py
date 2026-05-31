@@ -4,7 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
-from app.schemas.auth import AuthResponse, TokenResponse, UserLoginRequest, UserRegisterRequest
+from app.schemas.auth import (
+    AuthResponse,
+    InternalUserUpdateRequest,
+    TokenResponse,
+    UserLoginRequest,
+    UserRegisterRequest,
+)
 from app.services.events import publish_user_registered
 
 
@@ -70,4 +76,39 @@ async def get_current_user(session: AsyncSession, user_id: int) -> User:
             detail="Пользователь не найден.",
         )
 
+    return user
+
+
+async def update_user_identity(
+    session: AsyncSession,
+    user_id: int,
+    payload: InternalUserUpdateRequest,
+) -> User:
+    user = await get_current_user(session, user_id)
+
+    if payload.username is not None or payload.email is not None:
+        duplicate_user = await session.scalar(
+            select(User).where(
+                User.id != user.id,
+                or_(
+                    User.username == payload.username,
+                    User.email == payload.email,
+                ),
+            ),
+        )
+
+        if duplicate_user:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Пользователь с таким email или username уже существует.",
+            )
+
+    if payload.username is not None:
+        user.username = payload.username
+
+    if payload.email is not None:
+        user.email = str(payload.email)
+
+    await session.commit()
+    await session.refresh(user)
     return user
