@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BINGO | Правила</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body>
+    <aside class="app-sidebar" aria-label="BINGO navigation">
+      <div class="side-brand">
+        <span>BINGO</span>
+      </div>
+      <nav class="side-nav">
+        <a class="side-nav-link" href="./home.html">Главная</a>
+        <a class="side-nav-link" href="./lobby.html">Комнаты</a>
+        <a class="side-nav-link" href="./rules.html">Правила</a>
+        <a class="side-nav-link" href="./profile.html">Профиль</a>
+      </nav>
+      <button class="side-nav-logout" id="navLogoutButton" type="button">Выйти</button>
+    </aside>
+
+    <main class="auth-shell">
+      <section class="auth-scene home-scene" aria-label="Правила игры BINGO">
+        <div class="signal-panel" aria-hidden="true">
+          <span class="signal-line signal-line-a"></span>
+          <span class="signal-line signal-line-b"></span>
+          <span class="signal-line signal-line-c"></span>
+        </div>
+
+        <article class="auth-card rules-card">
+          <div class="auth-kicker">BINGO</div>
+          <h1 class="auth-title" data-text="Правила">Правила</h1>
+
+          <div class="rules-content">
+            <p>
+              В Bingo каждый игрок получает карточку 5 на 5 с числами. Центральная клетка считается свободной и уже
+              отмечена.
+            </p>
+            <p>
+              После начала игры система по очереди вытягивает шары с числами. Если выпавшее число есть на вашей
+              карточке, отметьте соответствующую клетку.
+            </p>
+            <p>
+              Цель игры - собрать выбранную комбинацию: строку, столбец, диагональ или другой шаблон, который задан
+              для комнаты.
+            </p>
+            <p>
+              Когда нужная комбинация собрана, нажмите кнопку "Заявить BINGO". Система проверит карточку и зафиксирует
+              победителя.
+            </p>
+            <p>
+              Если комбинация не совпадает с правилами комнаты или не все нужные числа были вытянуты, заявка не будет
+              засчитана.
+            </p>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script src="../js/nav.js?v=ui-1"></script>
+  </body>
+</html>

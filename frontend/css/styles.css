@@ -345,7 +345,8 @@ input {
 }
 
 .home-card,
-.profile-card {
+.profile-card,
+.rules-card {
   width: min(100%, 680px);
 }
 
@@ -647,6 +648,19 @@ input {
   min-width: 0;
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.rules-content {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.58;
+}
+
+.rules-content p {
+  margin: 0;
 }
 
 .game-board-layout {
