@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
@@ -36,7 +37,7 @@ async def register_user(
     user = User(
         username=payload.username,
         email=str(payload.email),
-        hashed_password=hash_password(payload.password),
+        hashed_password=await run_in_threadpool(hash_password, payload.password),
     )
     session.add(user)
     await session.commit()
@@ -55,7 +56,13 @@ async def login_user(
 ) -> AuthResponse:
     user = await session.scalar(select(User).where(User.email == payload.email))
 
-    if not user or not verify_password(payload.password, user.hashed_password):
+    password_valid = user and await run_in_threadpool(
+        verify_password,
+        payload.password,
+        user.hashed_password,
+    )
+
+    if not password_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный email или пароль.",
