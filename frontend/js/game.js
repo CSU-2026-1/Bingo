@@ -344,7 +344,6 @@ function renderRoomProgress(progressItems = []) {
 
 function renderRoomState(room) {
   currentRoom = room;
-  renderRoomProgress();
   renderHostControls();
   if (currentCard) {
     renderCombinations(currentCard);

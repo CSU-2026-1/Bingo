@@ -1088,8 +1088,6 @@ input {
   display: grid;
   gap: 10px;
   padding: 20px;
-  background: rgba(7, 4, 13, 0.52);
-  border: 1px solid rgba(0, 191, 165, 0.24);
 }
 
 .room-progress-title {
