@@ -8,6 +8,8 @@ from app.schemas.cards import (
     CardResponse,
     MarkNumberRequest,
     MarkNumberResponse,
+    PlayerProgressResponse,
+    RoomProgressRequest,
     WinnerCheckData,
 )
 from app.services.cards import build_winner_check_data, generate_card
@@ -57,6 +59,20 @@ async def get_my_cards_history(
     repository: CardRepository = Depends(get_card_repository),
 ) -> list[CardResponse]:
     return await repository.get_history(game_id=game_id, user_id=user_id)
+
+
+@router.post("/games/{game_id}/cards/progress", response_model=list[PlayerProgressResponse])
+async def get_room_card_progress(
+    game_id: str,
+    payload: RoomProgressRequest,
+    _: str = Depends(get_current_user_id),
+    repository: CardRepository = Depends(get_card_repository),
+) -> list[PlayerProgressResponse]:
+    return await repository.get_room_progress(
+        game_id=game_id,
+        user_ids=payload.user_ids,
+        winning_pattern=payload.winning_pattern,
+    )
 
 
 @router.post("/games/{game_id}/cards/me/marks", response_model=MarkNumberResponse)

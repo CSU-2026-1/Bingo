@@ -45,34 +45,43 @@
           </div>
         </section>
 
-        <aside class="game-panel game-control-panel simple-game-panel" aria-label="Действия">
-          <div class="game-id-box">
-            <span>Комната</span>
-            <strong id="gameIdValue">Не выбрана</strong>
-          </div>
+        <div class="game-side-stack">
+          <aside class="game-panel game-control-panel simple-game-panel" aria-label="Действия">
+            <div class="game-id-box">
+              <span>Комната</span>
+              <strong id="gameIdValue">Не выбрана</strong>
+            </div>
 
-          <div class="simple-ball">
-            <em id="gameStatusValue">Ожидание</em>
-            <span>Последний шар</span>
-            <strong id="lastBallValue">...</strong>
-            <small id="drawnCountValue">0 выпало</small>
-          </div>
+            <div class="simple-ball">
+              <em id="gameStatusValue">Ожидание</em>
+              <span>Последний шар</span>
+              <strong id="lastBallValue">...</strong>
+              <small id="drawnCountValue">0 выпало</small>
+            </div>
 
-          <div class="winner-line is-hidden" id="winnerLine">
-            <span>Победитель</span>
-            <strong id="winnerValue">...</strong>
-          </div>
+            <div class="winner-line is-hidden" id="winnerLine">
+              <span>Победитель</span>
+              <strong id="winnerValue">...</strong>
+            </div>
 
-          <button class="auth-button game-button" id="cardActionButton" type="button">
-            <span>Открыть карточку</span>
-          </button>
+            <button class="auth-button game-button" id="cardActionButton" type="button">
+              <span>Открыть карточку</span>
+            </button>
 
-          <button class="auth-button game-button game-button-secondary" id="claimBingoButton" type="button" disabled>
-            <span>Заявить BINGO</span>
-          </button>
+            <button class="auth-button game-button game-button-secondary" id="claimBingoButton" type="button" disabled>
+              <span>Заявить BINGO</span>
+            </button>
 
-          <p class="auth-message game-message" id="gameMessage" aria-live="polite"></p>
-        </aside>
+            <p class="auth-message game-message" id="gameMessage" aria-live="polite"></p>
+          </aside>
+
+          <section class="game-panel room-progress-panel" aria-label="Прогресс игроков">
+            <div class="room-progress-title">Игроки в комнате</div>
+            <div class="room-progress-list" id="roomProgressList">
+              <div class="room-progress-empty">Загружаем список</div>
+            </div>
+          </section>
+        </div>
       </section>
     </main>
 

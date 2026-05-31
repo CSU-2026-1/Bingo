@@ -18,6 +18,7 @@ const markedCounter = document.querySelector("#markedCounter");
 const winnerLine = document.querySelector("#winnerLine");
 const winnerValue = document.querySelector("#winnerValue");
 const comboList = document.querySelector("#comboList");
+const roomProgressList = document.querySelector("#roomProgressList");
 
 let currentCard = null;
 let currentRoom = null;
@@ -229,6 +230,21 @@ async function loadWinner() {
   return readResponse(response, "Не удалось загрузить победителя.");
 }
 
+async function loadRoomProgress(room) {
+  const response = await fetch(`${CARD_API_URL}/games/${encodeURIComponent(room.id)}/cards/progress`, {
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      user_ids: (room.players || []).map((player) => String(player.user_id)),
+      winning_pattern: room.winning_pattern || "top_row",
+    }),
+  });
+  return readResponse(response, "Не удалось загрузить прогресс игроков.");
+}
+
 function claimStatusMessage(claim) {
   return {
     queued: "Заявка отправлена. Ждем проверку...",
@@ -292,8 +308,43 @@ function renderWinner(winner) {
   winnerValue.textContent = playerName(winner.user_id);
 }
 
+function renderRoomProgress(progressItems = []) {
+  roomProgressList.replaceChildren();
+
+  const players = currentRoom?.players || [];
+  if (!players.length) {
+    const empty = document.createElement("div");
+    empty.className = "room-progress-empty";
+    empty.textContent = "В комнате пока нет игроков";
+    roomProgressList.appendChild(empty);
+    return;
+  }
+
+  const progressByUserId = new Map(progressItems.map((item) => [String(item.user_id), item]));
+  players.forEach((player) => {
+    const progress = progressByUserId.get(String(player.user_id));
+    const item = document.createElement("div");
+    item.className = "room-progress-item";
+    if (progress?.is_complete) {
+      item.classList.add("is-complete");
+    }
+
+    const name = document.createElement("span");
+    name.className = "room-progress-name";
+    name.textContent = player.display_name || `Игрок ${player.user_id}`;
+
+    const value = document.createElement("strong");
+    value.className = "room-progress-value";
+    value.textContent = progress?.has_card ? `${progress.progress}/${progress.total}` : "нет карты";
+
+    item.append(name, value);
+    roomProgressList.appendChild(item);
+  });
+}
+
 function renderRoomState(room) {
   currentRoom = room;
+  renderRoomProgress();
   renderHostControls();
   if (currentCard) {
     renderCombinations(currentCard);
@@ -453,6 +504,7 @@ function renderCard(card) {
 
       const result = await markNumber(cell.number);
       renderCard(result.card);
+      await refreshRoomState().catch(() => {});
       setGameMessage(result.matched ? `Отмечено: ${cell.number}.` : "Такого номера нет в карточке.");
     }));
 
@@ -526,6 +578,7 @@ async function openOrCreateCard() {
   try {
     setGameMessage("Открываем карточку...");
     renderCard(await loadCard());
+    await refreshRoomState().catch(() => {});
     setGameMessage(isHost() ? "Карточка готова. Вы достаете шары для комнаты." : "Карточка готова. Ждем шар от хоста.");
   } catch (error) {
     if (!String(error.message).toLowerCase().includes("card not found") && !String(error.message).includes("Карточка")) {
@@ -534,6 +587,7 @@ async function openOrCreateCard() {
 
     setGameMessage("Создаем карточку...");
     renderCard(await createCard());
+    await refreshRoomState().catch(() => {});
     setGameMessage(isHost() ? "Карточка создана. Вы достаете шары для комнаты." : "Карточка создана. Ждем шар от хоста.");
   }
 }
@@ -547,6 +601,9 @@ async function refreshGameState() {
 async function refreshRoomState() {
   const room = await loadRoom();
   renderRoomState(room);
+  loadRoomProgress(room)
+    .then(renderRoomProgress)
+    .catch(() => {});
 
   if (room.status === "finished") {
     const winner = await loadWinner().catch(() => null);

@@ -1,8 +1,8 @@
 from typing import Any
 
 from app.core.config import settings
-from app.schemas.cards import CardResponse
-from app.services.cards import generate_card, mark_number
+from app.schemas.cards import CardResponse, PlayerProgressResponse
+from app.services.cards import card_pattern_progress, generate_card, mark_number
 
 
 CARD_TTL_SECONDS = 60 * 60 * 24
@@ -45,6 +45,41 @@ class CardRepository:
                 cards.append(card)
 
         return sorted(cards, key=lambda card: card.created_at)
+
+    async def get_room_progress(
+        self,
+        game_id: str,
+        user_ids: list[str],
+        winning_pattern: str,
+    ) -> list[PlayerProgressResponse]:
+        progress_items: list[PlayerProgressResponse] = []
+
+        for user_id in dict.fromkeys(str(user_id) for user_id in user_ids):
+            card = await self.get(game_id=game_id, user_id=user_id)
+            if card is None:
+                progress_items.append(
+                    PlayerProgressResponse(
+                        user_id=user_id,
+                        progress=0,
+                        total=0,
+                        has_card=False,
+                        is_complete=False,
+                    )
+                )
+                continue
+
+            progress, total = card_pattern_progress(card, winning_pattern)
+            progress_items.append(
+                PlayerProgressResponse(
+                    user_id=user_id,
+                    progress=progress,
+                    total=total,
+                    has_card=True,
+                    is_complete=progress == total,
+                )
+            )
+
+        return progress_items
 
     async def save(self, card: CardResponse) -> CardResponse:
         payload = card.model_dump_json()

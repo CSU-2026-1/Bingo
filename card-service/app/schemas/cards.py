@@ -41,6 +41,19 @@ class MarkNumberResponse(BaseModel):
     card: CardResponse
 
 
+class RoomProgressRequest(BaseModel):
+    user_ids: list[str] = Field(default_factory=list)
+    winning_pattern: str = "top_row"
+
+
+class PlayerProgressResponse(BaseModel):
+    user_id: str
+    progress: int = Field(ge=0)
+    total: int = Field(ge=0)
+    has_card: bool = False
+    is_complete: bool = False
+
+
 class WinnerCheckData(BaseModel):
     card_id: str
     game_id: str

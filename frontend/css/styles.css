@@ -694,9 +694,21 @@ input {
   padding: 20px;
 }
 
+.bingo-card-panel {
+  align-self: stretch;
+}
+
 .simple-game-panel {
   display: grid;
   gap: 12px;
+}
+
+.game-side-stack {
+  display: grid;
+  grid-column: 2;
+  gap: 20px;
+  align-self: stretch;
+  grid-template-rows: auto 1fr;
 }
 
 .game-button {
@@ -1072,6 +1084,68 @@ input {
   font-size: 18px;
 }
 
+.room-progress-panel {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+  background: rgba(7, 4, 13, 0.52);
+  border: 1px solid rgba(0, 191, 165, 0.24);
+}
+
+.room-progress-title {
+  color: var(--acid);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.room-progress-list {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.room-progress-item,
+.room-progress-empty {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 10px;
+  background: rgba(8, 3, 18, 0.68);
+  border: 1px solid rgba(0, 191, 165, 0.2);
+}
+
+.room-progress-item.is-complete {
+  border-color: rgba(0, 191, 165, 0.48);
+  box-shadow: inset 0 0 14px rgba(0, 191, 165, 0.12);
+}
+
+.room-progress-name {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-progress-value {
+  color: var(--acid);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.room-progress-empty {
+  grid-template-columns: 1fr;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .simple-ball em {
   width: max-content;
   padding: 4px 8px;
@@ -1349,6 +1423,10 @@ input {
   .game-board-layout,
   .simple-game-layout {
     grid-template-columns: 1fr;
+  }
+
+  .game-side-stack {
+    grid-column: auto;
   }
 
   .game-header {
