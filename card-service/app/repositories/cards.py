@@ -1,7 +1,9 @@
 from typing import Any
 
 from app.core.config import settings
+from app.schemas.cache_metrics import CacheMetricsResponse
 from app.schemas.cards import CardResponse, PlayerProgressResponse
+from app.services.cache_metrics import get_cache_metrics, increment_cache_metric
 from app.services.cards import card_pattern_progress, generate_card, mark_number
 
 
@@ -22,17 +24,31 @@ class CardRepository:
         return f"{settings.redis_key_prefix}:card-history-index:{game_id}:{user_id}"
 
     async def get(self, game_id: str, user_id: str) -> CardResponse | None:
-        raw_card = await self.redis_client.get(self.key(game_id, user_id))
+        try:
+            raw_card = await self.redis_client.get(self.key(game_id, user_id))
+        except Exception:
+            await increment_cache_metric(self.redis_client, "errors")
+            raise
+
         if raw_card is None:
+            await increment_cache_metric(self.redis_client, "misses")
             return None
 
+        await increment_cache_metric(self.redis_client, "hits")
         return CardResponse.model_validate_json(raw_card)
 
     async def get_by_id(self, card_id: str) -> CardResponse | None:
-        raw_card = await self.redis_client.get(self.card_key(card_id))
+        try:
+            raw_card = await self.redis_client.get(self.card_key(card_id))
+        except Exception:
+            await increment_cache_metric(self.redis_client, "errors")
+            raise
+
         if raw_card is None:
+            await increment_cache_metric(self.redis_client, "misses")
             return None
 
+        await increment_cache_metric(self.redis_client, "hits")
         return CardResponse.model_validate_json(raw_card)
 
     async def get_history(self, game_id: str, user_id: str) -> list[CardResponse]:
@@ -84,19 +100,28 @@ class CardRepository:
     async def save(self, card: CardResponse) -> CardResponse:
         payload = card.model_dump_json()
 
-        await self.redis_client.set(
-            self.key(card.game_id, card.user_id),
-            payload,
-            ex=CARD_TTL_SECONDS,
-        )
-        await self.redis_client.set(
-            self.card_key(card.card_id),
-            payload,
-            ex=CARD_TTL_SECONDS,
-        )
-        await self.redis_client.sadd(self.history_key(card.game_id, card.user_id), card.card_id)
-        await self.redis_client.expire(self.history_key(card.game_id, card.user_id), CARD_TTL_SECONDS)
+        try:
+            await self.redis_client.set(
+                self.key(card.game_id, card.user_id),
+                payload,
+                ex=CARD_TTL_SECONDS,
+            )
+            await self.redis_client.set(
+                self.card_key(card.card_id),
+                payload,
+                ex=CARD_TTL_SECONDS,
+            )
+            await self.redis_client.sadd(self.history_key(card.game_id, card.user_id), card.card_id)
+            await self.redis_client.expire(self.history_key(card.game_id, card.user_id), CARD_TTL_SECONDS)
+        except Exception:
+            await increment_cache_metric(self.redis_client, "errors")
+            raise
+
+        await increment_cache_metric(self.redis_client, "writes")
         return card
+
+    async def metrics(self) -> CacheMetricsResponse:
+        return await get_cache_metrics(self.redis_client)
 
     async def create(self, game_id: str, user_id: str) -> CardResponse:
         existing_card = await self.get(game_id, user_id)
