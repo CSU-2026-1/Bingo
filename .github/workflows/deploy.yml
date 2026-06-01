@@ -57,7 +57,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "frontend/"
-          target: "/root/bingo/frontend"
+          target: "/root/bingo/"
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.2.0
