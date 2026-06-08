@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+import httpx
 
 from app.api.dependencies import get_card_repository
+from app.core.config import settings
 from app.core.security import get_current_user_id
 from app.repositories.cards import CardRepository
 from app.schemas.cards import (
@@ -33,7 +35,22 @@ async def create_my_card(
     user_id: str = Depends(get_current_user_id),
     repository: CardRepository = Depends(get_card_repository),
 ) -> CardResponse:
-    return await repository.create(game_id=game_id, user_id=user_id)
+    card = await repository.create(game_id=game_id, user_id=user_id)
+
+    if settings.user_service_url:
+        try:
+            async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as client:
+                await client.patch(
+                    f"{settings.user_service_url}/users/internal/{user_id}/balance",
+                    json={"amount": "1"},
+                    headers={
+                        "X-Internal-Service-Token": settings.internal_service_token,
+                    },
+                )
+        except httpx.HTTPError:
+            pass
+
+    return card
 
 
 @router.get("/games/{game_id}/cards/me", response_model=CardResponse)

@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     auth_service_url: str
     internal_service_token: str
     http_timeout_seconds: float = 5
+    ollama_url: str = ""
+    ollama_model: str = ""
+    image_service_url: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

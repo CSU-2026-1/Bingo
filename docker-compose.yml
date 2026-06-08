@@ -8,12 +8,20 @@ services:
     ports:
       - "${FRONTEND_PORT}:80"
     depends_on:
-      - auth-service
-      - user-service
-      - lobby-service
-      - card-service
-      - game-engine-service
-      - winner-service
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+      lobby-service:
+        condition: service_started
+      card-service:
+        condition: service_started
+      game-engine-service:
+        condition: service_started
+      winner-service:
+        condition: service_started
+      ollama:
+        condition: service_started
 
   auth-service:
     build:
@@ -56,11 +64,16 @@ services:
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
       HTTP_TIMEOUT_SECONDS: ${HTTP_TIMEOUT_SECONDS}
+      OLLAMA_URL: ${OLLAMA_URL}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      IMAGE_SERVICE_URL: ${IMAGE_SERVICE_URL}
     ports:
       - "8002:8000"
     depends_on:
       user-postgres:
         condition: service_healthy
+      image-service:
+        condition: service_started
 
   user-worker:
     build:
@@ -80,6 +93,8 @@ services:
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
       HTTP_TIMEOUT_SECONDS: ${HTTP_TIMEOUT_SECONDS}
+      OLLAMA_URL: ${OLLAMA_URL}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
     depends_on:
       user-postgres:
         condition: service_healthy
@@ -118,6 +133,9 @@ services:
       REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
+      USER_SERVICE_URL: ${USER_SERVICE_URL}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      HTTP_TIMEOUT_SECONDS: ${HTTP_TIMEOUT_SECONDS}
     ports:
       - "${CARD_SERVICE_PORT}:8000"
     depends_on:
@@ -290,9 +308,36 @@ services:
       timeout: 5s
       retries: 5
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: bingo-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  image-service:
+    build: ./image-service
+    container_name: bingo-image-service
+    volumes:
+      - image_data:/data/images
+    environment:
+      HF_MODEL: ${HF_MODEL}
+      IMAGE_SIZE: ${IMAGE_SIZE}
+      NUM_INFERENCE_STEPS: ${NUM_INFERENCE_STEPS}
+    ports:
+      - "8007:8000"
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+
 volumes:
   auth_postgres_data:
   user_postgres_data:
   lobby_postgres_data:
   rabbitmq_data:
   redis_data:
+  ollama_data:
+  image_data:

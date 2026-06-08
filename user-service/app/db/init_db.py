@@ -1,5 +1,6 @@
 from app.db.base import Base
 from app.db.session import engine
+from app.models.collected_card import CollectedCard  # noqa: F401
 from app.models.user import User  # noqa: F401
 
 

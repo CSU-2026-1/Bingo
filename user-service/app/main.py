@@ -4,14 +4,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.shop import router as shop_router
 from app.api.users import router as users_router
 from app.core.config import settings
 from app.db.init_db import init_db
+from app.services.llm import ensure_model_available
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_db()
+    await ensure_model_available()
     yield
 
 
@@ -24,6 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(users_router)
+app.include_router(shop_router)
 
 
 @app.get("/health")
