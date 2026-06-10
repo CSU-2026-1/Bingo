@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BINGO Admin | Активные игры</title>
+    <link rel="stylesheet" href="../../css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="admin-brand">
+          <div class="admin-brand-icon">B</div>
+          <div class="admin-brand-text">BINGO<small>Admin Panel</small></div>
+        </div>
+        <a class="admin-nav-link" href="./index.html"><span class="admin-nav-icon">&#9632;</span> Дашборд</a>
+        <a class="admin-nav-link" href="./users.html"><span class="admin-nav-icon">&#9786;</span> Пользователи</a>
+        <a class="admin-nav-link" href="./rooms.html"><span class="admin-nav-icon">&#9733;</span> Комнаты</a>
+        <a class="admin-nav-link" href="./games.html"><span class="admin-nav-icon">&#9830;</span> Игры</a>
+        <div class="admin-nav-spacer"></div>
+        <a class="admin-nav-link" href="../home.html"><span class="admin-nav-icon">&#8592;</span> На сайт</a>
+        <button class="admin-nav-logout" id="adminLogout"><span class="admin-nav-icon">&#10005;</span> Выйти</button>
+      </aside>
+
+      <main class="admin-main">
+        <div class="admin-header">
+          <h1>Активные игры <small>Игровые сессии в Redis</small></h1>
+          <button class="admin-btn" id="refreshBtn">Обновить</button>
+        </div>
+
+        <div class="admin-panel">
+          <div id="gamesContent"><div class="admin-empty">Загрузка...</div></div>
+        </div>
+      </main>
+    </div>
+
+    <script src="../../js/admin-common.js"></script>
+    <script>
+      if (!requireAdmin()) throw new Error("redirect");
+
+      const contentEl = document.querySelector("#gamesContent");
+
+      async function loadGames() {
+        const res = await adminFetch("/admin/games");
+        if (!res) return;
+        const data = await res.json();
+
+        if (data.games.length === 0) {
+          contentEl.innerHTML = '<div class="admin-empty">Нет активных игр</div>';
+          return;
+        }
+
+        contentEl.innerHTML = `
+          <table class="admin-table">
+            <thead><tr><th>Комната</th><th>Выпало шаров</th><th>Осталось в пуле</th><th>Последний шар</th><th>Игроков</th><th>Начата</th></tr></thead>
+            <tbody>
+              ${data.games.map(g => `
+                <tr>
+                  <td><a href="./room-detail.html?id=${g.room_id}" style="color: var(--acid); font-weight: 800;">#${g.room_id}</a></td>
+                  <td>${g.drawn_count}</td>
+                  <td>${g.pool_remaining}</td>
+                  <td style="font-weight: 900; color: var(--acid);">${g.last_ball || "-"}</td>
+                  <td>${g.player_count}</td>
+                  <td class="muted">${g.started_at ? new Date(g.started_at).toLocaleString("ru") : "-"}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+      }
+
+      document.querySelector("#refreshBtn").addEventListener("click", loadGames);
+      loadGames();
+    </script>
+  </body>
+</html>

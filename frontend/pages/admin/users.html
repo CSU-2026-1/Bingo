@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BINGO Admin | Пользователи</title>
+    <link rel="stylesheet" href="../../css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="admin-brand">
+          <div class="admin-brand-icon">B</div>
+          <div class="admin-brand-text">BINGO<small>Admin Panel</small></div>
+        </div>
+        <a class="admin-nav-link" href="./index.html"><span class="admin-nav-icon">&#9632;</span> Дашборд</a>
+        <a class="admin-nav-link" href="./users.html"><span class="admin-nav-icon">&#9786;</span> Пользователи</a>
+        <a class="admin-nav-link" href="./rooms.html"><span class="admin-nav-icon">&#9733;</span> Комнаты</a>
+        <a class="admin-nav-link" href="./games.html"><span class="admin-nav-icon">&#9830;</span> Игры</a>
+        <div class="admin-nav-spacer"></div>
+        <a class="admin-nav-link" href="../home.html"><span class="admin-nav-icon">&#8592;</span> На сайт</a>
+        <button class="admin-nav-logout" id="adminLogout"><span class="admin-nav-icon">&#10005;</span> Выйти</button>
+      </aside>
+
+      <main class="admin-main">
+        <div class="admin-header">
+          <h1>Пользователи <small>Управление пользователями системы</small></h1>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-toolbar">
+            <input class="admin-search" type="text" id="searchInput" placeholder="Поиск по имени или email..." />
+            <button class="admin-btn" id="searchBtn">Найти</button>
+          </div>
+          <div id="usersTable"><div class="admin-empty">Загрузка...</div></div>
+          <div class="admin-pagination" id="pagination"></div>
+        </div>
+      </main>
+    </div>
+
+    <div class="admin-modal-backdrop is-hidden" id="balanceModal">
+      <div class="admin-modal-panel">
+        <div class="admin-modal-header">
+          <h2>Выдать баланс</h2>
+          <button class="admin-modal-close" id="closeBalanceModal">&times;</button>
+        </div>
+        <p style="color: var(--muted); margin: 0 0 12px; font-size: 14px;">
+          Пользователь: <strong id="balanceUserName" style="color: var(--text);"></strong>
+        </p>
+        <p style="color: var(--muted); margin: 0 0 16px; font-size: 13px;">
+          Текущий баланс: <strong id="balanceCurrentVal" style="color: var(--acid);"></strong>
+        </p>
+        <div class="admin-field">
+          <label>Новый баланс</label>
+          <input type="number" id="balanceAmountInput" min="0" step="0.01" placeholder="Введите сумму..." />
+        </div>
+        <div class="admin-error is-hidden" id="balanceError"></div>
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+          <button class="admin-btn" style="flex: 1;" id="saveBalanceBtn">Сохранить</button>
+          <button class="admin-btn is-danger" id="cancelBalanceBtn">Отмена</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="../../js/admin-common.js"></script>
+    <script>
+      if (!requireAdmin()) throw new Error("redirect");
+
+      const tableEl = document.querySelector("#usersTable");
+      const paginationEl = document.querySelector("#pagination");
+      const searchInput = document.querySelector("#searchInput");
+      const searchBtn = document.querySelector("#searchBtn");
+      let currentPage = 0;
+      const pageSize = 20;
+
+      const balanceModal = document.querySelector("#balanceModal");
+      const balanceUserName = document.querySelector("#balanceUserName");
+      const balanceCurrentVal = document.querySelector("#balanceCurrentVal");
+      const balanceAmountInput = document.querySelector("#balanceAmountInput");
+      const balanceError = document.querySelector("#balanceError");
+      const saveBalanceBtn = document.querySelector("#saveBalanceBtn");
+      const closeBalanceModal = document.querySelector("#closeBalanceModal");
+      const cancelBalanceBtn = document.querySelector("#cancelBalanceBtn");
+      let currentBalanceUserId = null;
+
+      function openBalanceModal(userId, username, currentBalance) {
+        currentBalanceUserId = userId;
+        balanceUserName.textContent = username + " (ID: " + userId + ")";
+        balanceCurrentVal.textContent = String(currentBalance);
+        balanceAmountInput.value = String(currentBalance);
+        balanceError.classList.add("is-hidden");
+        balanceModal.classList.remove("is-hidden");
+        balanceAmountInput.focus();
+      }
+
+      function closeBalanceModalFn() {
+        balanceModal.classList.add("is-hidden");
+        currentBalanceUserId = null;
+      }
+
+      closeBalanceModal.addEventListener("click", closeBalanceModalFn);
+      cancelBalanceBtn.addEventListener("click", closeBalanceModalFn);
+      balanceModal.addEventListener("click", function(e) {
+        if (e.target === balanceModal) closeBalanceModalFn();
+      });
+
+      saveBalanceBtn.addEventListener("click", async function() {
+        if (!currentBalanceUserId) return;
+        var amount = parseFloat(balanceAmountInput.value);
+        if (isNaN(amount) || amount < 0) {
+          balanceError.textContent = "Введите корректную сумму";
+          balanceError.classList.remove("is-hidden");
+          return;
+        }
+
+        saveBalanceBtn.disabled = true;
+        saveBalanceBtn.textContent = "Сохранение...";
+        balanceError.classList.add("is-hidden");
+
+        try {
+          var res = await adminFetch("/admin/users/" + currentBalanceUserId + "/balance", {
+            method: "POST",
+            body: { amount: amount },
+          });
+          if (!res) return;
+          var data = await res.json();
+          if (!res.ok) {
+            var msg = (typeof data.detail === "string") ? data.detail : "Ошибка обновления баланса";
+            throw new Error(msg);
+          }
+          closeBalanceModalFn();
+          loadUsers(currentPage);
+        } catch (err) {
+          balanceError.textContent = err.message || "Неизвестная ошибка";
+          balanceError.classList.remove("is-hidden");
+        } finally {
+          saveBalanceBtn.disabled = false;
+          saveBalanceBtn.textContent = "Сохранить";
+        }
+      });
+
+      async function loadUsers(page) {
+        if (page === undefined) page = 0;
+        currentPage = page;
+        var search = searchInput.value.trim();
+        var params = new URLSearchParams({ limit: pageSize, offset: page * pageSize });
+        if (search) params.set("search", search);
+
+        var res = await adminFetch("/admin/users?" + params);
+        if (!res) return;
+        var data = await res.json();
+
+        if (data.users.length === 0) {
+          tableEl.innerHTML = '<div class="admin-empty">Пользователи не найдены</div>';
+          paginationEl.innerHTML = "";
+          return;
+        }
+
+        var rows = "";
+        for (var i = 0; i < data.users.length; i++) {
+          var u = data.users[i];
+          var bal = (u.user_balance !== null && u.user_balance !== undefined) ? u.user_balance : u.auth_balance;
+          var safeName = u.username.replace(/'/g, "\\'").replace(/"/g, '\\"');
+          rows += '<tr>' +
+            '<td style="font-weight:800;">' + u.id + '</td>' +
+            '<td style="font-weight:800;">' + u.username + '</td>' +
+            '<td class="muted">' + u.email + '</td>' +
+            '<td>' + u.auth_balance + '</td>' +
+            '<td>' + (u.user_balance !== null ? u.user_balance : '<span class="muted">-</span>') + '</td>' +
+            '<td>' + u.cards_count + '</td>' +
+            '<td class="muted">' + (u.created_at ? new Date(u.created_at).toLocaleString("ru") : "-") + '</td>' +
+            '<td><button class="admin-btn" onclick="openBalanceModal(' + u.id + ',\'' + safeName + '\',' + bal + ')">Баланс</button></td>' +
+            '</tr>';
+        }
+
+        tableEl.innerHTML =
+          '<table class="admin-table">' +
+            '<thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Баланс (auth)</th><th>Баланс (user)</th><th>Карт</th><th>Регистрация</th><th></th></tr></thead>' +
+            '<tbody>' + rows + '</tbody>' +
+          '</table>';
+
+        var totalPages = Math.ceil(data.total / pageSize);
+        paginationEl.innerHTML =
+          '<div class="admin-pagination-info">Показано ' + (page * pageSize + 1) + '-' + Math.min((page + 1) * pageSize, data.total) + ' из ' + data.total + '</div>' +
+          '<div class="admin-pagination-buttons">' +
+            '<button class="admin-btn" ' + (page === 0 ? "disabled" : "") + ' onclick="loadUsers(' + (page - 1) + ')">Назад</button>' +
+            '<button class="admin-btn" ' + (page >= totalPages - 1 ? "disabled" : "") + ' onclick="loadUsers(' + (page + 1) + ')">Далее</button>' +
+          '</div>';
+      }
+
+      searchBtn.addEventListener("click", function() { loadUsers(0); });
+      searchInput.addEventListener("keydown", function(e) { if (e.key === "Enter") loadUsers(0); });
+
+      window.openBalanceModal = openBalanceModal;
+      window.loadUsers = loadUsers;
+
+      loadUsers();
+    </script>
+  </body>
+</html>

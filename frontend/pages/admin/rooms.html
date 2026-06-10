@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BINGO Admin | Комнаты</title>
+    <link rel="stylesheet" href="../../css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="admin-brand">
+          <div class="admin-brand-icon">B</div>
+          <div class="admin-brand-text">BINGO<small>Admin Panel</small></div>
+        </div>
+        <a class="admin-nav-link" href="./index.html"><span class="admin-nav-icon">&#9632;</span> Дашборд</a>
+        <a class="admin-nav-link" href="./users.html"><span class="admin-nav-icon">&#9786;</span> Пользователи</a>
+        <a class="admin-nav-link" href="./rooms.html"><span class="admin-nav-icon">&#9733;</span> Комнаты</a>
+        <a class="admin-nav-link" href="./games.html"><span class="admin-nav-icon">&#9830;</span> Игры</a>
+        <div class="admin-nav-spacer"></div>
+        <a class="admin-nav-link" href="../home.html"><span class="admin-nav-icon">&#8592;</span> На сайт</a>
+        <button class="admin-nav-logout" id="adminLogout"><span class="admin-nav-icon">&#10005;</span> Выйти</button>
+      </aside>
+
+      <main class="admin-main">
+        <div class="admin-header">
+          <h1>Комнаты <small>Управление игровыми комнатами</small></h1>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-toolbar">
+            <select class="admin-select" id="statusFilter">
+              <option value="">Все статусы</option>
+              <option value="waiting">Ожидание</option>
+              <option value="active">Активные</option>
+              <option value="finished">Завершённые</option>
+            </select>
+            <button class="admin-btn" id="filterBtn">Фильтровать</button>
+          </div>
+          <div id="roomsTable"><div class="admin-empty">Загрузка...</div></div>
+          <div class="admin-pagination" id="pagination"></div>
+        </div>
+      </main>
+    </div>
+
+    <script src="../../js/admin-common.js"></script>
+    <script>
+      if (!requireAdmin()) throw new Error("redirect");
+
+      const tableEl = document.querySelector("#roomsTable");
+      const paginationEl = document.querySelector("#pagination");
+      const statusFilter = document.querySelector("#statusFilter");
+      const filterBtn = document.querySelector("#filterBtn");
+      let currentPage = 0;
+      const pageSize = 20;
+
+      async function loadRooms(page = 0) {
+        currentPage = page;
+        const status = statusFilter.value;
+        const params = new URLSearchParams({ limit: pageSize, offset: page * pageSize });
+        if (status) params.set("status_filter", status);
+
+        const res = await adminFetch(`/admin/rooms?${params}`);
+        if (!res) return;
+        const data = await res.json();
+
+        if (data.rooms.length === 0) {
+          tableEl.innerHTML = '<div class="admin-empty">Комнаты не найдены</div>';
+          paginationEl.innerHTML = "";
+          return;
+        }
+
+        tableEl.innerHTML = `
+          <table class="admin-table">
+            <thead><tr><th>ID</th><th>Название</th><th>Хост</th><th>Статус</th><th>Паттерн</th><th>Игроков</th><th>Создана</th><th></th></tr></thead>
+            <tbody>
+              ${data.rooms.map(r => `
+                <tr>
+                  <td><a href="./room-detail.html?id=${r.id}" style="color: var(--acid); font-weight: 800;">${r.id}</a></td>
+                  <td style="font-weight: 800;">${r.name}</td>
+                  <td class="muted">${r.host_user_id}</td>
+                  <td><span class="status-badge is-${r.status}">${r.status}</span></td>
+                  <td class="muted">${r.winning_pattern}</td>
+                  <td>${r.player_count}</td>
+                  <td class="muted">${r.created_at ? new Date(r.created_at).toLocaleString("ru") : "-"}</td>
+                  <td>
+                    <button class="admin-btn is-danger" onclick="deleteRoom(${r.id})" title="Удалить">&#10005;</button>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+
+        const totalPages = Math.ceil(data.total / pageSize);
+        paginationEl.innerHTML = `
+          <div class="admin-pagination-info">Показано ${page * pageSize + 1}-${Math.min((page + 1) * pageSize, data.total)} из ${data.total}</div>
+          <div class="admin-pagination-buttons">
+            <button class="admin-btn" ${page === 0 ? "disabled" : ""} onclick="loadRooms(${page - 1})">Назад</button>
+            <button class="admin-btn" ${page >= totalPages - 1 ? "disabled" : ""} onclick="loadRooms(${page + 1})">Далее</button>
+          </div>
+        `;
+      }
+
+      async function deleteRoom(id) {
+        if (!confirm(`Удалить комнату #${id}?`)) return;
+        const res = await adminFetch(`/admin/rooms/${id}`, { method: "DELETE" });
+        if (res && res.ok) loadRooms(currentPage);
+      }
+
+      filterBtn.addEventListener("click", () => loadRooms(0));
+      loadRooms();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BINGO Admin | Вход</title>
+    <link rel="stylesheet" href="../../css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-login-shell">
+      <div class="admin-login-card">
+        <h1 class="admin-login-title">BINGO Admin</h1>
+        <p class="admin-login-sub">Войдите в панель администратора</p>
+        <div class="admin-error is-hidden" id="loginError"></div>
+        <form id="loginForm">
+          <div class="admin-field">
+            <label for="username">Логин</label>
+            <input type="text" id="username" name="username" required autocomplete="username" />
+          </div>
+          <div class="admin-field">
+            <label for="password">Пароль</label>
+            <input type="password" id="password" name="password" required autocomplete="current-password" />
+          </div>
+          <button type="submit" class="admin-login-btn" id="loginBtn">Войти</button>
+        </form>
+        <div style="margin-top: 20px; text-align: center;">
+          <a href="../login.html" style="color: var(--muted); font-size: 13px; text-decoration: none;">Назад к сайту</a>
+        </div>
+      </div>
+    </div>
+    <script>
+      const form = document.querySelector("#loginForm");
+      const errorEl = document.querySelector("#loginError");
+      const btn = document.querySelector("#loginBtn");
+
+      if (localStorage.getItem("bingo_admin_token")) {
+        window.location.href = "./index.html";
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorEl.classList.add("is-hidden");
+        btn.disabled = true;
+        btn.textContent = "Вход...";
+
+        try {
+          const res = await fetch("/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: form.username.value,
+              password: form.password.value,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.detail || "Ошибка входа");
+          }
+          localStorage.setItem("bingo_admin_token", data.access_token);
+          window.location.href = "./index.html";
+        } catch (err) {
+          errorEl.textContent = err.message;
+          errorEl.classList.remove("is-hidden");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Войти";
+        }
+      });
+    </script>
+  </body>
+</html>

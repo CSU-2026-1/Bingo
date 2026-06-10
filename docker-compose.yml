@@ -20,8 +20,42 @@ services:
         condition: service_started
       winner-service:
         condition: service_started
-      ollama:
+      admin-service:
         condition: service_started
+
+  admin-service:
+    build:
+      context: ./admin-service
+    container_name: bingo-admin-service
+    environment:
+      SERVICE_NAME: ${ADMIN_SERVICE_NAME}
+      AUTH_DATABASE_URL: ${AUTH_DATABASE_URL}
+      USER_DATABASE_URL: ${USER_DATABASE_URL}
+      LOBBY_DATABASE_URL: ${LOBBY_DATABASE_URL}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_DB: ${REDIS_DB}
+      REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      USER_SERVICE_URL: ${USER_SERVICE_URL}
+      LOBBY_SERVICE_URL: ${LOBBY_SERVICE_URL}
+    ports:
+      - "${ADMIN_SERVICE_PORT}:8000"
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+      user-postgres:
+        condition: service_healthy
+      lobby-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   auth-service:
     build:

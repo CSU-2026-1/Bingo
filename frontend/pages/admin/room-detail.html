@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BINGO Admin | Детали комнаты</title>
+    <link rel="stylesheet" href="../../css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="admin-brand">
+          <div class="admin-brand-icon">B</div>
+          <div class="admin-brand-text">BINGO<small>Admin Panel</small></div>
+        </div>
+        <a class="admin-nav-link" href="./index.html"><span class="admin-nav-icon">&#9632;</span> Дашборд</a>
+        <a class="admin-nav-link" href="./users.html"><span class="admin-nav-icon">&#9786;</span> Пользователи</a>
+        <a class="admin-nav-link" href="./rooms.html"><span class="admin-nav-icon">&#9733;</span> Комнаты</a>
+        <a class="admin-nav-link" href="./games.html"><span class="admin-nav-icon">&#9830;</span> Игры</a>
+        <div class="admin-nav-spacer"></div>
+        <a class="admin-nav-link" href="../home.html"><span class="admin-nav-icon">&#8592;</span> На сайт</a>
+        <button class="admin-nav-logout" id="adminLogout"><span class="admin-nav-icon">&#10005;</span> Выйти</button>
+      </aside>
+
+      <main class="admin-main">
+        <a class="admin-back-link" href="./rooms.html">&larr; Назад к списку комнат</a>
+        <div class="admin-header">
+          <h1 id="roomTitle">Комната <small id="roomSubtitle"></small></h1>
+          <button class="admin-btn is-danger" id="deleteBtn">Удалить комнату</button>
+        </div>
+
+        <div id="roomContent"><div class="admin-empty">Загрузка...</div></div>
+      </main>
+    </div>
+
+    <script src="../../js/admin-common.js"></script>
+    <script>
+      if (!requireAdmin()) throw new Error("redirect");
+
+      const params = new URLSearchParams(window.location.search);
+      const roomId = params.get("id");
+      const contentEl = document.querySelector("#roomContent");
+      const titleEl = document.querySelector("#roomTitle");
+      const subtitleEl = document.querySelector("#roomSubtitle");
+      const deleteBtn = document.querySelector("#deleteBtn");
+
+      async function loadRoom() {
+        if (!roomId) { contentEl.innerHTML = '<div class="admin-empty">ID комнаты не указан</div>'; return; }
+
+        const res = await adminFetch(`/admin/rooms/${roomId}`);
+        if (!res) return;
+        if (res.status === 404) { contentEl.innerHTML = '<div class="admin-empty">Комната не найдена</div>'; return; }
+
+        const data = await res.json();
+        const room = data.room;
+        const players = data.players;
+        const game = data.game_state;
+
+        titleEl.innerHTML = `Комната #${room.id} <small>${room.name}</small>`;
+        subtitleEl.textContent = room.name;
+
+        let gameHtml = "";
+        if (game) {
+          gameHtml = `
+            <div class="admin-panel" style="margin-top: 20px;">
+              <h3 class="admin-panel-title">Состояние игры</h3>
+              <div class="admin-detail-grid">
+                <div class="admin-detail-item"><div class="admin-detail-label">Активна</div><div class="admin-detail-value is-acid">${game.active ? "Да" : "Нет"}</div></div>
+                <div class="admin-detail-item"><div class="admin-detail-label">Выпало шаров</div><div class="admin-detail-value">${game.drawn_count}</div></div>
+                <div class="admin-detail-item"><div class="admin-detail-label">Осталось в пуле</div><div class="admin-detail-value">${game.pool_remaining}</div></div>
+                <div class="admin-detail-item"><div class="admin-detail-label">Последний шар</div><div class="admin-detail-value is-acid">${game.last_ball || "-"}</div></div>
+                <div class="admin-detail-item"><div class="admin-detail-label">Начата</div><div class="admin-detail-value">${game.started_at ? new Date(game.started_at).toLocaleString("ru") : "-"}</div></div>
+              </div>
+              ${game.drawn_balls.length > 0 ? `
+                <div style="margin-top: 16px;">
+                  <div class="admin-detail-label">Выпавшие шары</div>
+                  <div class="balls-list">
+                    ${game.drawn_balls.map((b, i) => `<div class="ball-chip ${i === game.drawn_balls.length - 1 ? 'is-last' : ''}">${b}</div>`).join("")}
+                  </div>
+                </div>
+              ` : ""}
+            </div>
+          `;
+        }
+
+        contentEl.innerHTML = `
+          <div class="admin-panel">
+            <h3 class="admin-panel-title">Информация</h3>
+            <div class="admin-detail-grid">
+              <div class="admin-detail-item"><div class="admin-detail-label">ID</div><div class="admin-detail-value">${room.id}</div></div>
+              <div class="admin-detail-item"><div class="admin-detail-label">Название</div><div class="admin-detail-value">${room.name}</div></div>
+              <div class="admin-detail-item"><div class="admin-detail-label">Хост</div><div class="admin-detail-value">${room.host_user_id}</div></div>
+              <div class="admin-detail-item"><div class="admin-detail-label">Статус</div><div class="admin-detail-value"><span class="status-badge is-${room.status}">${room.status}</span></div></div>
+              <div class="admin-detail-item"><div class="admin-detail-label">Паттерн победы</div><div class="admin-detail-value is-acid">${room.winning_pattern}</div></div>
+              <div class="admin-detail-item"><div class="admin-detail-label">Создана</div><div class="admin-detail-value">${room.created_at ? new Date(room.created_at).toLocaleString("ru") : "-"}</div></div>
+            </div>
+          </div>
+
+          <div class="admin-panel" style="margin-top: 20px;">
+            <h3 class="admin-panel-title">Игроки (${players.length})</h3>
+            ${players.length > 0 ? `
+              <div class="admin-player-list">
+                ${players.map(p => `
+                  <div class="admin-player-item">
+                    <span class="admin-player-name">${p.display_name}</span>
+                    <span class="admin-player-id">ID: ${p.user_id} | ${p.joined_at ? new Date(p.joined_at).toLocaleString("ru") : "-"}</span>
+                  </div>
+                `).join("")}
+              </div>
+            ` : '<div class="admin-empty">Игроков нет</div>'}
+          </div>
+
+          ${gameHtml}
+        `;
+      }
+
+      deleteBtn.addEventListener("click", async () => {
+        if (!confirm(`Удалить комнату #${roomId}?`)) return;
+        const res = await adminFetch(`/admin/rooms/${roomId}`, { method: "DELETE" });
+        if (res && res.ok) window.location.href = "./rooms.html";
+      });
+
+      loadRoom();
+    </script>
+  </body>
+</html>

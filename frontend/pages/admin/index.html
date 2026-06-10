@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BINGO Admin | Панель управления</title>
+    <link rel="stylesheet" href="../../css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="admin-brand">
+          <div class="admin-brand-icon">B</div>
+          <div class="admin-brand-text">BINGO<small>Admin Panel</small></div>
+        </div>
+        <a class="admin-nav-link" href="./index.html"><span class="admin-nav-icon">&#9632;</span> Дашборд</a>
+        <a class="admin-nav-link" href="./users.html"><span class="admin-nav-icon">&#9786;</span> Пользователи</a>
+        <a class="admin-nav-link" href="./rooms.html"><span class="admin-nav-icon">&#9733;</span> Комнаты</a>
+        <a class="admin-nav-link" href="./games.html"><span class="admin-nav-icon">&#9830;</span> Игры</a>
+        <div class="admin-nav-spacer"></div>
+        <a class="admin-nav-link" href="../home.html"><span class="admin-nav-icon">&#8592;</span> На сайт</a>
+        <button class="admin-nav-logout" id="adminLogout"><span class="admin-nav-icon">&#10005;</span> Выйти</button>
+      </aside>
+
+      <main class="admin-main">
+        <div class="admin-header">
+          <h1>Дашборд <small>Общая статистика системы</small></h1>
+          <button class="admin-btn" id="refreshBtn">Обновить</button>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card"><div class="stat-card-label">Загрузка...</div><div class="stat-card-value">-</div></div>
+        </div>
+
+        <div class="admin-panel">
+          <h3 class="admin-panel-title">Последние комнаты</h3>
+          <div id="recentRooms"><div class="admin-empty">Загрузка...</div></div>
+        </div>
+      </main>
+    </div>
+
+    <script src="../../js/admin-common.js"></script>
+    <script>
+      if (!requireAdmin()) throw new Error("redirect");
+
+      const statsGrid = document.querySelector("#statsGrid");
+      const recentRooms = document.querySelector("#recentRooms");
+
+      async function loadDashboard() {
+        const [statsRes, roomsRes] = await Promise.all([
+          adminFetch("/admin/stats"),
+          adminFetch("/admin/rooms?limit=10"),
+        ]);
+        if (!statsRes || !roomsRes) return;
+
+        const stats = await statsRes.json();
+        const rooms = await roomsRes.json();
+
+        statsGrid.innerHTML = `
+          <div class="stat-card"><div class="stat-card-label">Пользователи (auth)</div><div class="stat-card-value">${stats.auth_users}</div></div>
+          <div class="stat-card"><div class="stat-card-label">Профили</div><div class="stat-card-value is-purple">${stats.user_profiles}</div></div>
+          <div class="stat-card"><div class="stat-card-label">Коллекционные карты</div><div class="stat-card-value is-gold">${stats.collected_cards}</div></div>
+          <div class="stat-card"><div class="stat-card-label">Всего комнат</div><div class="stat-card-value">${stats.total_rooms}</div></div>
+          <div class="stat-card"><div class="stat-card-label">Ожидание</div><div class="stat-card-value is-gold">${stats.waiting_rooms}</div></div>
+          <div class="stat-card"><div class="stat-card-label">Активные комнаты</div><div class="stat-card-value is-purple">${stats.active_rooms}</div></div>
+          <div class="stat-card"><div class="stat-card-label">Завершённые</div><div class="stat-card-value">${stats.finished_rooms}</div></div>
+          <div class="stat-card"><div class="stat-card-label">Активные игры (Redis)</div><div class="stat-card-value is-pink">${stats.active_games}</div></div>
+          <div class="stat-card"><div class="stat-card-label">Всего игроков в комнатах</div><div class="stat-card-value">${stats.total_players}</div></div>
+        `;
+
+        if (rooms.rooms.length === 0) {
+          recentRooms.innerHTML = '<div class="admin-empty">Комнат пока нет</div>';
+        } else {
+          recentRooms.innerHTML = `
+            <table class="admin-table">
+              <thead><tr><th>ID</th><th>Название</th><th>Хост</th><th>Статус</th><th>Игроков</th><th>Создана</th></tr></thead>
+              <tbody>
+                ${rooms.rooms.map(r => `
+                  <tr>
+                    <td><a href="./room-detail.html?id=${r.id}" style="color: var(--acid); font-weight: 800;">${r.id}</a></td>
+                    <td>${r.name}</td>
+                    <td class="muted">${r.host_user_id}</td>
+                    <td><span class="status-badge is-${r.status}">${r.status}</span></td>
+                    <td>${r.player_count}</td>
+                    <td class="muted">${r.created_at ? new Date(r.created_at).toLocaleString("ru") : "-"}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          `;
+        }
+      }
+
+      document.querySelector("#refreshBtn").addEventListener("click", loadDashboard);
+      loadDashboard();
+    </script>
+  </body>
+</html>
